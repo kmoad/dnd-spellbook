@@ -5,7 +5,7 @@ from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
 from reportlab.lib.units import inch
 import re
 
-spellbook_dir = Path('spellbook')
+spells_dir = Path('spells')
 prep_slots = 5
 
 def check_ritual(md_content):
@@ -22,7 +22,7 @@ def check_concentration(md_content):
             return 'concentration' in l.lower()
 
 spells = []
-for spell_path in spellbook_dir.iterdir():
+for spell_path in spells_dir.iterdir():
     fn = spell_path.stem
     level = int(fn.split()[0])
     spell_name = ' '.join(fn.split()[1:])
@@ -40,8 +40,9 @@ for level, is_ritual, needs_conc, name in spells:
     row = [''] * prep_slots + [str(level), mk_check(is_ritual), mk_check(needs_conc), name]
     rows.append(row)
 
+output_fn = 'table.pdf'
 doc = SimpleDocTemplate(
-    'spellbook.pdf',
+    output_fn,
     pagesize=letter,
     leftMargin=0.5*inch,
     rightMargin=0.5*inch,
@@ -71,4 +72,4 @@ table.setStyle(TableStyle([
 ]))
 
 doc.build([table])
-print('Wrote spellbook.pdf')
+print(f'Wrote {output_fn}')
