@@ -1,6 +1,8 @@
 # Hypnotic Pattern
 
-3rd level Illusion
+Source: Player's Handbook
+
+3rd level illusion
 
 - Casting Time: 1 action
 - Range: 120 feet
