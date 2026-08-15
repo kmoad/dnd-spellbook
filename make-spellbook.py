@@ -271,8 +271,8 @@ def check_ritual(md_content):
     for l in md_content.split('\n'):
         if len(l.strip()) == 0: continue
         line_count += 1
-        if line_count == 2:
-            return 'ritual' in l
+        if line_count == 1:
+            return 'ritual' in l.lower()
 
 
 def check_concentration(md_content):
@@ -294,11 +294,11 @@ def build_table_pdf(paths):
 
     spells.sort()
 
-    header = [''] * PREP_SLOTS + ['Lvl', 'R', 'C', 'Spell']
+    header = ['Lvl', 'R', 'C', 'Spell'] + [''] * PREP_SLOTS
     rows = [header]
     mk_check = lambda _: '✓' if _ else ''
     for level, is_ritual, needs_conc, name in spells:
-        row = [''] * PREP_SLOTS + [str(level), mk_check(is_ritual), mk_check(needs_conc), name]
+        row = [str(level), mk_check(is_ritual), mk_check(needs_conc), name] + [''] * PREP_SLOTS
         rows.append(row)
 
     doc = SimpleDocTemplate(
@@ -314,16 +314,16 @@ def build_table_pdf(paths):
     lvl_width = 0.4*inch
     ritual_width = 0.2*inch
     conc_width = 0.2*inch
-    name_width = 3.0*inch
-    col_widths = [slot_width] * PREP_SLOTS + [lvl_width, ritual_width, conc_width, name_width]
+    name_width = 2.0*inch
+    col_widths = [lvl_width, ritual_width, conc_width, name_width] + [slot_width] * PREP_SLOTS
 
     table = Table(rows, colWidths=col_widths, repeatRows=1)
     table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#CCCCCC')),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
         ('FONTSIZE', (0, 0), (-1, -1), 10),
-        ('ALIGN', (0, 0), (PREP_SLOTS - 1, -1), 'CENTER'),
-        ('ALIGN', (PREP_SLOTS, 0), (PREP_SLOTS + 2, -1), 'CENTER'),
+        ('ALIGN', (0, 0), (2, -1), 'CENTER'),
+        ('ALIGN', (4, 0), (-1, -1), 'CENTER'),
         ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
         ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#F0F0F0')]),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
