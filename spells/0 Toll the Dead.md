@@ -1,8 +1,6 @@
 # Toll the Dead
 
-Source: Xanathar's Guide to Everything
-
-Necromancy cantrip
+### Necromancy cantrip
 
 - Casting Time: 1 action
 - Range: 60 feet

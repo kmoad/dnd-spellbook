@@ -1,8 +1,6 @@
 # Find Familiar
 
-Source: Player's Handbook
-
-1st-level conjuration (ritual)
+### 1st-level conjuration (ritual)
 
 - Casting Time: 1 hour
 - Range: 10 feet

@@ -1,8 +1,6 @@
 # Magic Missile
 
-Source: Player's Handbook
-
-1st-level evocation
+### 1st-level evocation
 
 - Casting Time: 1 action
 - Range: 120 feet

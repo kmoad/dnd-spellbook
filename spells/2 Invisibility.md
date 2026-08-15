@@ -1,8 +1,6 @@
 # Invisibility
 
-Source: Player's Handbook
-
-2nd-level illusion
+### 2nd-level illusion
 
 - Casting Time: 1 action
 - Range: Touch

@@ -1,8 +1,6 @@
 # Disguise Self
 
-Source: Player's Handbook
-
-1st-level illusion
+### 1st-level illusion
 
 - Casting Time: 1 action
 - Range: Self

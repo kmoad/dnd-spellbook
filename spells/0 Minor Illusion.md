@@ -1,8 +1,6 @@
 # Minor Illusion
 
-Source: Player's Handbook
-
-Illusion cantrip
+### Illusion cantrip
 
 - Casting Time: 1 action
 - Range: 30 feet

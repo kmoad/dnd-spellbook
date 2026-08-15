@@ -1,8 +1,6 @@
 # Dragon's Breath
 
-Source: Xanathar's Guide to Everything
-
-2nd-level transmutation
+### 2nd-level transmutation
 
 - Casting Time: 1 bonus action
 - Range: Touch

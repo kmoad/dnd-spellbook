@@ -1,8 +1,6 @@
 # Ray of Frost
 
-Source: Player's Handbook
-
-Evocation cantrip
+### Evocation cantrip
 
 - Casting Time: 1 action
 - Range: 60 feet

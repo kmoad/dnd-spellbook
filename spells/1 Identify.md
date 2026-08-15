@@ -1,8 +1,6 @@
 # Identify
 
-Source: Player's Handbook
-
-1st-level divination (ritual)
+### 1st-level divination (ritual)
 
 - Casting Time: 1 minute
 - Range: Touch

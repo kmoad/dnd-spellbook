@@ -1,8 +1,6 @@
 # Scorching Ray
 
-Source: Player's Handbook
-
-2nd-level evocation
+### 2nd-level evocation
 
 - Casting Time: 1 action
 - Range: 120 feet

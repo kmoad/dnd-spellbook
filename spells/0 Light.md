@@ -1,8 +1,6 @@
 # Light
 
-Source: Player's Handbook
-
-Evocation cantrip
+### Evocation cantrip
 
 - Casting Time: 1 action
 - Range: Touch

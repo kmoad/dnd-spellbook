@@ -1,8 +1,6 @@
 # Message
 
-Source: Player's Handbook
-
-Transmutation cantrip
+### Transmutation cantrip
 
 - Casting Time: 1 action
 - Range: 120 feet

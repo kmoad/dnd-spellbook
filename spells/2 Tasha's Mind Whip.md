@@ -1,8 +1,6 @@
 # Tasha's Mind Whip
 
-Source: Tasha's Cauldron of Everything
-
-2nd-level enchantment
+### 2nd-level enchantment
 
 - Casting Time: 1 action
 - Range: 90 feet

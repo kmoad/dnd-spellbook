@@ -1,8 +1,6 @@
 # Frostbite
 
-Source: Xanathar's Guide to Everything
-
-Evocation cantrip
+### Evocation cantrip
 
 - Casting Time: 1 action
 - Range: 60 feet

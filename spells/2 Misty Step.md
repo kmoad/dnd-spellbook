@@ -1,8 +1,6 @@
-#Misty Step
+# Misty Step
 
-Source: Player's Handbook
-
-2nd-level conjuration
+### 2nd-level conjuration
 
 - Casting Time: 1 bonus action
 - Range: Self

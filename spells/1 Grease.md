@@ -1,8 +1,6 @@
 # Grease
 
-Source: Player's Handbook
-
-1st-level conjuration
+### 1st-level conjuration
 
 - Casting Time: 1 action
 - Range: 60 feet

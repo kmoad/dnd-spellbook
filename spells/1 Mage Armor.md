@@ -1,8 +1,6 @@
 # Mage Armor
 
-Source: Player's Handbook
-
-1st-level abjuration
+### 1st-level abjuration
 
 - Casting Time: 1 action
 - Range: Touch

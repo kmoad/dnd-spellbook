@@ -1,8 +1,6 @@
 # Hold Person
 
-Source: Player's Handbook
-
-2nd-level enchantment
+### 2nd-level enchantment
 
 - Casting Time: 1 action
 - Range: 60 feet

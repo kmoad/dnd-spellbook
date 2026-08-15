@@ -1,8 +1,6 @@
 # Web
 
-Source: Player's Handbook
-
-2nd-level conjuration
+### 2nd-level conjuration
 
 - Casting Time: 1 action
 - Range: 60 feet

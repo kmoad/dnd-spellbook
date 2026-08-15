@@ -1,8 +1,6 @@
 # Poison Spray
 
-Source: Player's Handbook
-
-Conjuration cantrip
+### Conjuration cantrip
 
 - Casting Time: 1 action
 - Range: 10 feet
