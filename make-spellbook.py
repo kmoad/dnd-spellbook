@@ -1,21 +1,20 @@
 #!/usr/bin/env python3
 """
-compile_cards.py — Markdown files → printable 3.5"×5" card PDF
+make-spellbook.py — Markdown spells in spells/ → cards.pdf and table.pdf
 
-4 cards per US Letter page, 2×2 grid, each card in vertical (portrait)
-orientation sized for standard 3.5"×5" sleeves. Dashed scissor lines mark
-the exact cut points. Each input file becomes one independent card, so new
-spells can be inserted anywhere without renumbering. A spell whose content
-doesn't fit on one card automatically spills onto a second card.
+Cards: 3.5"×5" cards, 4 per US Letter page, 2×2 grid, with dashed scissor
+lines. Each spell file becomes one independent card, and oversized spells
+automatically spill onto a second card.
+
+Table: one-line-per-spell prep sheet with prep-slot checkboxes, level,
+ritual/concentration flags, and name.
 
 Usage:
-    python compile_cards.py spellbook/*.md
-    python compile_cards.py spellbook/*.md -o spellbook.pdf
-    python compile_cards.py "spellbook/1 Magic Missile.md"
+    python make-spellbook.py
 """
 
-import argparse
 import math
+import re
 import sys
 from html.parser import HTMLParser
 from pathlib import Path
@@ -29,7 +28,13 @@ from reportlab.lib.units import inch
 from reportlab.platypus import (
     BaseDocTemplate, Frame, FrameBreak, HRFlowable,
     ListFlowable, ListItem, PageTemplate, Paragraph, SimpleDocTemplate,
+    Table, TableStyle,
 )
+
+SPELLS_DIR = Path("spells")
+CARDS_PDF = "cards.pdf"
+TABLE_PDF = "table.pdf"
+PREP_SLOTS = 5
 
 # ── Page geometry ─────────────────────────────────────────────────────────────
 
@@ -220,56 +225,11 @@ def md_to_flowables(md_text, styles):
     return parser.get_flowables()
 
 
-def write_individual_card(flowables, out_path, styles):
-    """Write a single 3.5" × 5" PDF for one card (extra pages if it overflows)."""
-    doc = SimpleDocTemplate(
-        str(out_path),
-        pagesize=CARD_PAGE,
-        leftMargin=CARD_PAD, rightMargin=CARD_PAD,
-        topMargin=CARD_PAD, bottomMargin=CARD_PAD,
-    )
-    doc.build(flowables)
+# ── Cards PDF ─────────────────────────────────────────────────────────────────
 
-
-# ── Main ──────────────────────────────────────────────────────────────────────
-
-def main():
-    ap = argparse.ArgumentParser(
-        description='Compile markdown files into a 3.5"×5" card PDF (4 cards/page).'
-    )
-    ap.add_argument("files", nargs="+", help="Markdown files (order = print order)")
-    ap.add_argument("-o", "--output", default="all-cards.pdf",
-                    help="Output PDF filename (default: cards.pdf)")
-    ap.add_argument("--cards-dir", default="cards",
-                    help="Directory for individual card PDFs (default: cards/)")
-    args = ap.parse_args()
-
-    paths = [Path(f) for f in args.files]
-    missing = [p for p in paths if not p.exists()]
-    if missing:
-        for p in missing:
-            print(f"ERROR: not found: {p}", file=sys.stderr)
-        sys.exit(1)
-
-    cards_dir = Path(args.cards_dir)
-    cards_dir.mkdir(exist_ok=True)
-
-    styles = make_styles()
-
-    # Individual card PDFs. Flowables are stateful once built (ReportLab
-    # caches wrap/split results on them), so each PDF gets its own freshly
-    # parsed set rather than reusing objects across builds.
-    for path in paths:
-        flowables = md_to_flowables(path.read_text(encoding="utf-8"), styles)
-        out = cards_dir / (path.stem + ".pdf")
-        write_individual_card(flowables, out, styles)
-        print(f"  {out}")
-
-    # Combined print PDF (4 per letter page, 2×2 grid, with cut lines).
-    # No FrameBreak is forced when content overflows a card's frame — ReportLab
-    # automatically continues into the next frame, so an oversized spell just
-    # spills onto a second card. A FrameBreak is inserted between spells so
-    # each one always starts on a fresh card.
+def build_cards_pdf(paths, styles):
+    # Flowables are stateful once built (ReportLab caches wrap/split results
+    # on them), so each spell gets its own freshly parsed set.
     story = []
     for i, path in enumerate(paths):
         flowables = md_to_flowables(path.read_text(encoding="utf-8"), styles)
@@ -293,7 +253,7 @@ def main():
     ]
     template = PageTemplate(id="card", frames=frames, onPage=draw_cut_lines)
 
-    doc = BaseDocTemplate(args.output, pagesize=letter,
+    doc = BaseDocTemplate(CARDS_PDF, pagesize=letter,
                           leftMargin=SIDE, rightMargin=SIDE,
                           topMargin=TOPBOT, bottomMargin=TOPBOT)
     doc.addPageTemplates([template])
@@ -301,7 +261,95 @@ def main():
 
     n = len(paths)
     pages = math.ceil(n / 4)
-    print(f"Wrote {args.output}  ({n} cards, {pages} page{'s' if pages != 1 else ''})")
+    print(f"Wrote {CARDS_PDF}  ({n} cards, {pages} page{'s' if pages != 1 else ''})")
+
+
+# ── Table PDF ─────────────────────────────────────────────────────────────────
+
+def check_ritual(md_content):
+    line_count = -1
+    for l in md_content.split('\n'):
+        if len(l.strip()) == 0: continue
+        line_count += 1
+        if line_count == 2:
+            return 'ritual' in l
+
+
+def check_concentration(md_content):
+    for l in md_content.split('\n'):
+        if re.match(r'^\s*-\s*duration:', l.lower()):
+            return 'concentration' in l.lower()
+
+
+def build_table_pdf(paths):
+    spells = []
+    for spell_path in paths:
+        fn = spell_path.stem
+        level = int(fn.split()[0])
+        spell_name = ' '.join(fn.split()[1:])
+        md_content = spell_path.read_text()
+        is_ritual = check_ritual(md_content)
+        needs_conc = check_concentration(md_content)
+        spells.append((level, is_ritual, needs_conc, spell_name))
+
+    spells.sort()
+
+    header = [''] * PREP_SLOTS + ['Lvl', 'R', 'C', 'Spell']
+    rows = [header]
+    mk_check = lambda _: '✓' if _ else ''
+    for level, is_ritual, needs_conc, name in spells:
+        row = [''] * PREP_SLOTS + [str(level), mk_check(is_ritual), mk_check(needs_conc), name]
+        rows.append(row)
+
+    doc = SimpleDocTemplate(
+        TABLE_PDF,
+        pagesize=letter,
+        leftMargin=0.5*inch,
+        rightMargin=0.5*inch,
+        topMargin=0.5*inch,
+        bottomMargin=0.5*inch,
+    )
+
+    slot_width = 0.35*inch
+    lvl_width = 0.4*inch
+    ritual_width = 0.2*inch
+    conc_width = 0.2*inch
+    name_width = 3.0*inch
+    col_widths = [slot_width] * PREP_SLOTS + [lvl_width, ritual_width, conc_width, name_width]
+
+    table = Table(rows, colWidths=col_widths, repeatRows=1)
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#CCCCCC')),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 10),
+        ('ALIGN', (0, 0), (PREP_SLOTS - 1, -1), 'CENTER'),
+        ('ALIGN', (PREP_SLOTS, 0), (PREP_SLOTS + 2, -1), 'CENTER'),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#F0F0F0')]),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('TOPPADDING', (0, 0), (-1, -1), 4),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+    ]))
+
+    doc.build([table])
+    print(f'Wrote {TABLE_PDF}')
+
+
+# ── Main ──────────────────────────────────────────────────────────────────────
+
+def main():
+    if not SPELLS_DIR.is_dir():
+        print(f"ERROR: not found: {SPELLS_DIR}", file=sys.stderr)
+        sys.exit(1)
+
+    paths = sorted(SPELLS_DIR.glob("*.md"))
+    if not paths:
+        print(f"ERROR: no spell files found in {SPELLS_DIR}", file=sys.stderr)
+        sys.exit(1)
+
+    styles = make_styles()
+    build_cards_pdf(paths, styles)
+    build_table_pdf(paths)
 
 
 if __name__ == "__main__":
