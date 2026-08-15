@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """
-compile_cards.py — Markdown files → printable half-page card PDF
+compile_cards.py — Markdown files → printable 3.5"×5" card PDF
 
-2 cards per US Letter page. A dashed scissor line marks the exact center.
-Each input file becomes one independent card, so new spells can be inserted
-anywhere without renumbering.
+4 cards per US Letter page, 2×2 grid, each card in vertical (portrait)
+orientation sized for standard 3.5"×5" sleeves. Dashed scissor lines mark
+the exact cut points. Each input file becomes one independent card, so new
+spells can be inserted anywhere without renumbering. A spell whose content
+doesn't fit on one card automatically spills onto a second card.
 
 Usage:
     python compile_cards.py spellbook/*.md
@@ -31,26 +33,41 @@ from reportlab.platypus import (
 
 # ── Page geometry ─────────────────────────────────────────────────────────────
 
-PAGE_W, PAGE_H = letter       # 612 × 792 pt
-SIDE  = 0.5 * inch            # left / right margin
-OUTER = 0.45 * inch           # top / bottom outer margin
-PAD   = 0.2 * inch            # gap between cut line and card content
+PAGE_W, PAGE_H = letter        # 612 × 792 pt (8.5" × 11")
 
-MID_Y  = PAGE_H / 2           # 396 pt — exact centre
-CARD_W = PAGE_W - 2 * SIDE    # 7.5"
-CARD_H = MID_Y - OUTER - PAD  # ≈ 4.8" usable per card
+CARD_W = 3.5 * inch            # physical card width (sleeve size)
+CARD_H = 5.0 * inch            # physical card height (sleeve size)
 
-HALF_PAGE = (PAGE_W, PAGE_H / 2)  # 8.5" × 5.5" — individual card page size
+SIDE   = 0.5 * inch            # left / right page margin
+TOPBOT = 0.25 * inch           # top / bottom page margin
+GAP_H  = 0.5 * inch            # horizontal gap between the two columns
+GAP_V  = 0.5 * inch            # vertical gap between the two rows
+
+CARD_PAD = 0.15 * inch         # inset between card edge and card content
+
+CARD_PAGE = (CARD_W, CARD_H)   # individual card page size
+
+# Column / row origins (bottom-left corner of each card, in points)
+COL_X = [SIDE, SIDE + CARD_W + GAP_H]
+ROW_Y = [TOPBOT + CARD_H + GAP_V, TOPBOT]   # [top row, bottom row]
+
+# Exact card edges along each axis — cutting on every one of these yields
+# pieces that are precisely 3.5" × 5".
+CUT_X = [COL_X[0], COL_X[0] + CARD_W, COL_X[1], COL_X[1] + CARD_W]
+CUT_Y = [ROW_Y[1], ROW_Y[1] + CARD_H, ROW_Y[0], ROW_Y[0] + CARD_H]
 
 
 # ── Cut guide ─────────────────────────────────────────────────────────────────
 
-def draw_cut_line(canvas, doc):
+def draw_cut_lines(canvas, doc):
     canvas.saveState()
     canvas.setStrokeColorRGB(0.5, 0.5, 0.5)
     canvas.setLineWidth(0.5)
     canvas.setDash([6, 4])
-    canvas.line(0, MID_Y, PAGE_W, MID_Y)
+    for x in CUT_X:
+        canvas.line(x, 0, x, PAGE_H)
+    for y in CUT_Y:
+        canvas.line(0, y, PAGE_W, y)
     canvas.restoreState()
 
 
@@ -204,12 +221,12 @@ def md_to_flowables(md_text, styles):
 
 
 def write_individual_card(flowables, out_path, styles):
-    """Write a single half-page (8.5" × 5.5") PDF for one card."""
+    """Write a single 3.5" × 5" PDF for one card (extra pages if it overflows)."""
     doc = SimpleDocTemplate(
         str(out_path),
-        pagesize=HALF_PAGE,
-        leftMargin=SIDE, rightMargin=SIDE,
-        topMargin=OUTER, bottomMargin=OUTER,
+        pagesize=CARD_PAGE,
+        leftMargin=CARD_PAD, rightMargin=CARD_PAD,
+        topMargin=CARD_PAD, bottomMargin=CARD_PAD,
     )
     doc.build(flowables)
 
@@ -218,7 +235,7 @@ def write_individual_card(flowables, out_path, styles):
 
 def main():
     ap = argparse.ArgumentParser(
-        description="Compile markdown files into a half-page card PDF (2 cards/page)."
+        description='Compile markdown files into a 3.5"×5" card PDF (4 cards/page).'
     )
     ap.add_argument("files", nargs="+", help="Markdown files (order = print order)")
     ap.add_argument("-o", "--output", default="all-cards.pdf",
@@ -239,39 +256,51 @@ def main():
 
     styles = make_styles()
 
-    # Individual half-page PDFs
-    all_flowables = []
+    # Individual card PDFs. Flowables are stateful once built (ReportLab
+    # caches wrap/split results on them), so each PDF gets its own freshly
+    # parsed set rather than reusing objects across builds.
     for path in paths:
         flowables = md_to_flowables(path.read_text(encoding="utf-8"), styles)
-        all_flowables.append(flowables)
         out = cards_dir / (path.stem + ".pdf")
-        write_individual_card(list(flowables), out, styles)
+        write_individual_card(flowables, out, styles)
         print(f"  {out}")
 
-    # Combined print PDF (2 per letter page with cut line)
+    # Combined print PDF (4 per letter page, 2×2 grid, with cut lines).
+    # No FrameBreak is forced when content overflows a card's frame — ReportLab
+    # automatically continues into the next frame, so an oversized spell just
+    # spills onto a second card. A FrameBreak is inserted between spells so
+    # each one always starts on a fresh card.
     story = []
-    for i, flowables in enumerate(all_flowables):
+    for i, path in enumerate(paths):
+        flowables = md_to_flowables(path.read_text(encoding="utf-8"), styles)
         story.extend(flowables)
-        if i < len(all_flowables) - 1:
+        if i < len(paths) - 1:
             story.append(FrameBreak())
 
-    top_frame = Frame(SIDE, MID_Y + PAD, CARD_W, CARD_H,
-                      leftPadding=0, rightPadding=0, topPadding=0, bottomPadding=0,
-                      id="top")
-    bot_frame = Frame(SIDE, OUTER, CARD_W, CARD_H,
-                      leftPadding=0, rightPadding=0, topPadding=0, bottomPadding=0,
-                      id="bot")
-    template = PageTemplate(id="card", frames=[top_frame, bot_frame],
-                            onPage=draw_cut_line)
+    frames = [
+        Frame(COL_X[0], ROW_Y[0], CARD_W, CARD_H,
+              leftPadding=CARD_PAD, rightPadding=CARD_PAD,
+              topPadding=CARD_PAD, bottomPadding=CARD_PAD, id="tl"),
+        Frame(COL_X[1], ROW_Y[0], CARD_W, CARD_H,
+              leftPadding=CARD_PAD, rightPadding=CARD_PAD,
+              topPadding=CARD_PAD, bottomPadding=CARD_PAD, id="tr"),
+        Frame(COL_X[0], ROW_Y[1], CARD_W, CARD_H,
+              leftPadding=CARD_PAD, rightPadding=CARD_PAD,
+              topPadding=CARD_PAD, bottomPadding=CARD_PAD, id="bl"),
+        Frame(COL_X[1], ROW_Y[1], CARD_W, CARD_H,
+              leftPadding=CARD_PAD, rightPadding=CARD_PAD,
+              topPadding=CARD_PAD, bottomPadding=CARD_PAD, id="br"),
+    ]
+    template = PageTemplate(id="card", frames=frames, onPage=draw_cut_lines)
 
     doc = BaseDocTemplate(args.output, pagesize=letter,
                           leftMargin=SIDE, rightMargin=SIDE,
-                          topMargin=OUTER, bottomMargin=OUTER)
+                          topMargin=TOPBOT, bottomMargin=TOPBOT)
     doc.addPageTemplates([template])
     doc.build(story)
 
     n = len(paths)
-    pages = math.ceil(n / 2)
+    pages = math.ceil(n / 4)
     print(f"Wrote {args.output}  ({n} cards, {pages} page{'s' if pages != 1 else ''})")
 
 
